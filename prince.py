@@ -71,12 +71,18 @@ def callback_handler(call):
     if data in ["yt_video", "yt_shorts"]:
         user_states[chat_id] = {"mode": data}
         bot.send_message(chat_id, f"📎 Please send me the <b>{data.replace('yt_', '').replace('_', ' ').title()}</b> YouTube link:")
-        bot.answer_callback_query(call.id)
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass  # Ignore callback query timeout errors
 
     elif data == "yt_mp3":
         user_states[chat_id] = {"mode": "yt_mp3"}
         bot.send_message(chat_id, "📎 Please send me the <b>MP3</b> YouTube link:")
-        bot.answer_callback_query(call.id)
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass  # Ignore callback query timeout errors
 
     elif data == "yt_playlist":
         user_states[chat_id] = {"mode": "playlist_choose"}
@@ -87,30 +93,45 @@ def callback_handler(call):
             types.InlineKeyboardButton("❌ Cancel", callback_data="cancel")
         )
         bot.edit_message_text("Choose playlist download format:", chat_id, call.message.message_id, reply_markup=markup)
-        bot.answer_callback_query(call.id)
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass  # Ignore callback query timeout errors
 
     elif data in ["playlist_video", "playlist_mp3"]:
         user_states[chat_id]["playlist_format"] = "mp4" if data == "playlist_video" else "mp3"
         user_states[chat_id]["mode"] = "playlist_wait_link"
         bot.send_message(chat_id, "📎 Send the playlist link now:")
-        bot.answer_callback_query(call.id)
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass  # Ignore callback query timeout errors
 
     elif data.startswith("quality_"):
         quality = data.split("_")[1]
         state = user_states.get(chat_id)
         if not state:
-            bot.answer_callback_query(call.id, "Session expired, please start again.")
+            try:
+                bot.answer_callback_query(call.id, "Session expired, please start again.")
+            except Exception:
+                pass  # Ignore callback query timeout errors
             return
 
         state["quality"] = quality
-        bot.answer_callback_query(call.id)
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass  # Ignore callback query timeout errors
         threading.Thread(target=start_download, args=(chat_id, state)).start()
         clear_user_state(chat_id)
 
     elif data == "cancel":
         clear_user_state(chat_id)
         bot.edit_message_text("❌ Operation cancelled.", chat_id, call.message.message_id)
-        bot.answer_callback_query(call.id)
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass  # Ignore callback query timeout errors
 
 @bot.message_handler(func=lambda m: m.chat.id in user_states and user_states[m.chat.id].get("mode") in ["yt_video", "yt_shorts"])
 def receive_link_video(message):
@@ -125,7 +146,20 @@ def receive_link_video(message):
 
     progress_msg = bot.send_message(chat_id, "🔍 Searching Video...")
     try:
-        ydl_opts = {'quiet': True, 'skip_download': True}
+        ydl_opts = {
+            'quiet': True, 
+            'skip_download': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'referer': 'https://www.youtube.com/',
+            'headers': {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip,deflate',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'Keep-Alive': '300',
+                'Connection': 'keep-alive',
+            }
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         bot.edit_message_text("📦 Data Fetched!", chat_id, progress_msg.message_id)
@@ -191,6 +225,16 @@ def start_download_mp3(chat_id, url):
         'outtmpl': 'downloads/%(title)s.%(ext)s',
         'noplaylist': True,
         'quiet': True,
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'referer': 'https://www.youtube.com/',
+        'headers': {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Accept-Encoding': 'gzip,deflate',
+            'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+            'Keep-Alive': '300',
+            'Connection': 'keep-alive',
+        },
         'progress_hooks': [lambda d: download_hook(d, bot, chat_id, progress_msg)],
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
@@ -254,6 +298,16 @@ def start_download(chat_id, state):
             'noplaylist': True,
             'merge_output_format': 'mp4',
             'format': 'bestvideo+bestaudio/best',
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'referer': 'https://www.youtube.com/',
+            'headers': {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip,deflate',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'Keep-Alive': '300',
+                'Connection': 'keep-alive',
+            },
             'progress_hooks': [video_download_hook]
         }
 
@@ -327,6 +381,16 @@ def send_playlist(chat_id, url, fmt, progress_msg, playlist_download_hook):
         'yesplaylist': True,
         'noplaylist': False,
         'merge_output_format': 'mp4' if fmt == "mp4" else None,
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'referer': 'https://www.youtube.com/',
+        'headers': {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Accept-Encoding': 'gzip,deflate',
+            'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+            'Keep-Alive': '300',
+            'Connection': 'keep-alive',
+        },
         'progress_hooks': [playlist_download_hook]
     }
 
