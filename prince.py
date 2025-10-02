@@ -41,7 +41,7 @@ def main_menu():
         types.InlineKeyboardButton("🎞️ YT Shorts", callback_data="yt_shorts"),
         types.InlineKeyboardButton("🎵 YT MP3", callback_data="yt_mp3"),
         types.InlineKeyboardButton("📃 Playlist", callback_data="yt_playlist"),
-        types.InlineKeyboardButton("👤 Owner", url=f"https://t.me/{Aalyanmods}")
+        types.InlineKeyboardButton("👤 Owner", url=f"https://t.me/{OWNER_USERNAME}")
     )
     return markup
 
